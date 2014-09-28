@@ -17,10 +17,10 @@ var MOVE_ARMY = 1, BUILD_ACTION = 2, END_TURN = 3;
 
 // === Player properties
 var PLAYER_TEMPLATES = [
-    {i:0, n: 'Amber', l: '#fd8', d:'#960', h: '#fd8', hd:'#a80'},
-    {i:1, n: 'Crimson', l: '#f88', d:'#722', h: '#faa', hd:'#944'},
-    {i:2, n: 'Lavender', l: '#d9d', d:'#537', h: '#faf', hd:'#759'},
-    {i:3, n: 'Emerald', l: '#9d9', d:'#262', h: '#bfb', hd:'#484'}
+    {i:0, n: 'Amber', l: '#fd8', d:'#960', h: '#fd8', hd:'#a80', cb: 0},
+    {i:1, n: 'Crimson', l: '#f88', d:'#722', h: '#faa', hd:'#944', cb: 45},
+    {i:2, n: 'Lavender', l: '#d9d', d:'#537', h: '#faf', hd:'#759', cb: 90},
+    {i:3, n: 'Emerald', l: '#9d9', d:'#262', h: '#bfb', hd:'#484', cb: 125}
 ];
 
 // === Possible temple upgrades
@@ -428,6 +428,26 @@ function makeGradient(id, light, dark) {
 	}, gradientStop(60, dark) + gradientStop(100, light));
 }
 
+// Draw a line for thehatching function
+function makeHatchingPath(color, thickness) {
+    return elem('path', {
+        d: 'M -1,2 l 6,0',
+        stroke: color,
+        'stroke-width': thickness,
+    },'');
+}
+
+// Create an SVG pattern tag for colorblind-friendliness.
+function makePattern(id, color, angle, spacing, thickness) {
+    return elem('pattern', {
+        i: id,
+        width: spacing,
+        height: spacing,
+        patternUnits: 'userSpaceOnUse',
+        patternTransform: 'rotate(' + angle + ') scale(.25)'
+    }, makeHatchingPath(color, thickness));
+}
+
 // Creates a new polygon with the given fill, stroke and clipping path.
 function makePolygon(points, id, fill, stroke, clip) {
     stroke = stroke || "stroke:#000;stroke-width:0.25;";
@@ -454,12 +474,14 @@ function showMap(container, gameState) {
             makeClipPaths() +
             makeGradient('b', '#88f', '#113') +
             makeGradient('l', '#fa6', '#530') +
+            makePattern('n', 'transparent', 0, 0, 0) +
             makeGradient('lh', '#fb7', '#741') +
             makeGradient('d', '#210', '#000') +
             makeGradient('w', '#55f', '#003') +
             map(gameState.p, function(player, index) {
                 return makeGradient('p' + index, player.l, player.d) +
-                    makeGradient('p' + index + 'h', player.h, player.hd);
+                    makeGradient('p' + index + 'h', player.h, player.hd) +
+                    makePattern('p' + index + 'c', player.hd, player.cb, 3, 1);
             }).join(''));
 
     // create all the layers (5 per region)
@@ -468,12 +490,13 @@ function showMap(container, gameState) {
     var bottoms = makeRegionPolys('d', 'd', 1, 1, .05, .05);
     var shadows = makeRegionPolys('w', 'w', 1.05, 1.05, .2, .2, ' ');
     var highlighters = makeRegionPolys('hl', '', 1, 1, 0, 0, 'stroke:#fff;stroke-width:1.5;opacity:0.0;', 'clip');
+    var overlays = makeRegionPolys('o', 'n', 1, 1, 0, 0);
 
     // replace the map container contents with the new map
     container.innerHTML = elem('svg', {
         viewbox: '0 0 100 100',
         preserveAspectRatio: 'none'
-    }, defs + ocean + shadows + bottoms + tops + highlighters);
+    }, defs + ocean + shadows + bottoms + tops + highlighters + overlays);
 
     // clean some internal structures used to track HTML nodes
     soldierDivsById = {};
@@ -481,10 +504,11 @@ function showMap(container, gameState) {
     // hook up region objects to their HTML elements
     map(regions, function(region, index) {
         region.e = $('r' + index);
+        region.o = $('o' + index);
         region.c = projectPoint(centerOfWeight(region.p));
 
         region.hl = $('hl' + index);
-        onClickOrTap(region.hl, invokeUICallback.bind(0, region, 'c'));
+        onClickOrTap(region.o, invokeUICallback.bind(0, region, 'c'));
     });
 
     // additional callbacks for better UI
@@ -776,6 +800,7 @@ function updateMapDisplay(gameState) {
     function updateRegionDisplay(region) {
         var regionOwner = owner(gameState, region);
         var gradientName = (regionOwner ? 'p' + regionOwner.i : 'l');
+        var hatchingName = (gameSetup.cb && regionOwner ? 'p' + regionOwner.i + 'c' : 'n');
 
         var highlighted = contains(gameState.d && gameState.d.h || [], region) ||    // a region is highlighted if it has an available move
                           (gameState.e && regionOwner == gameState.e);               // - or belongs to the winner (end game display highlights the winner)
@@ -805,6 +830,7 @@ function updateMapDisplay(gameState) {
 
         // fill
         region.e.style.fill = 'url(#' + gradientName + ')';
+        region.o.style.fill = 'url(#' + hatchingName + ')';
     }
 
     function updateTooltips() {
@@ -2072,7 +2098,8 @@ var defaultSetup = {
     l: AI_NICE,
     s: true,
     tc: 12,
-    tt: {}
+    tt: {},
+    cb: false
 };
 var gameSetup = getSetupFromStorage();
 var appState = 0;
@@ -2115,6 +2142,7 @@ function prepareSetupUI() {
     html += div({i: 'pd', c: 'sc un'}, playerBoxes);
     html += buttonPanel("AI", "ai", ["Evil", "Mean", "Rude", "Nice"]);
     html += buttonPanel("Turns", "tc", ["Endless", "15", "12", "9"]);
+    html += buttonPanel("Colorblind Mode", "cb", ["Off", "On"]);
 
     // realize the UI
     $('d').innerHTML = html;
@@ -2129,6 +2157,9 @@ function prepareSetupUI() {
     map(range(0,4), function(index) {
         onClickOrTap($('ai' + index), invokeUICallback.bind(0, index, 'ai'));
         onClickOrTap($('tc' + index), invokeUICallback.bind(0, TURN_COUNTS[index], 'tc'));
+    });
+    map(range(0,2), function(index) {
+        onClickOrTap($('cb' + index), invokeUICallback.bind(0, index, 'cb'));
     });
 
     function buttonPanel(title, buttonIdPrefix, buttonLabels, additionalProperties) {
@@ -2185,6 +2216,11 @@ function runSetupScreen() {
         gameSetup.tc = turnCount;
         updateConfigButtons();
     };
+    uiCallbacks.cb = function(colorblindOff) {
+        gameSetup.cb = !colorblindOff;
+        updateConfigButtons();
+        regenerateMap();
+    };
 
     function setupValid() {
         var enabledPlayers = sum(gameSetup.p, function(playerState) {
@@ -2216,6 +2252,10 @@ function runSetupScreen() {
         map(range(0,4), function(index) {
             toggleClass('ai' + index, 'sl', index == gameSetup.l);
             toggleClass('tc' + index, 'sl', TURN_COUNTS[index] == gameSetup.tc);
+        });
+        //update colorblind mode button
+        map(range(0,2), function(index) {
+            toggleClass('cb' + index, 'sl', index == gameSetup.cb ? 0 : 1);
         });
     }
 
