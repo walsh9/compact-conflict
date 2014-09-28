@@ -17,10 +17,10 @@ var MOVE_ARMY = 1, BUILD_ACTION = 2, END_TURN = 3;
 
 // === Player properties
 var PLAYER_TEMPLATES = [
-    {i:0, n: 'Amber', l: '#fd8', d:'#960', h: '#fd8', hd:'#a80', cb: 0},
-    {i:1, n: 'Crimson', l: '#f88', d:'#722', h: '#faa', hd:'#944', cb: 45},
-    {i:2, n: 'Lavender', l: '#d9d', d:'#537', h: '#faf', hd:'#759', cb: 90},
-    {i:3, n: 'Emerald', l: '#9d9', d:'#262', h: '#bfb', hd:'#484', cb: 125}
+    {i:0, n: 'Amber', l: '#fd8', d:'#960', h: '#fd8', hd:'#a80', cb: '#740', cbp: 'M -1,2 h 6'},
+    {i:1, n: 'Crimson', l: '#f88', d:'#722', h: '#faa', hd:'#944', cb: '#500', cbp: 'M -1,-1 l 6,6'},
+    {i:2, n: 'Lavender', l: '#d9d', d:'#537', h: '#faf', hd:'#759', cb: '#215', cbp: 'M -1,2 h 2,0 m 2,0 h 2'},
+    {i:3, n: 'Emerald', l: '#9d9', d:'#262', h: '#bfb', hd:'#484', cb: '#040', cbp: 'M 2,-1 v 6'}
 ];
 
 // === Possible temple upgrades
@@ -429,23 +429,23 @@ function makeGradient(id, light, dark) {
 }
 
 // Draw a line for thehatching function
-function makeHatchingPath(color, thickness) {
+function makeHatchingPath(color, path) {
     return elem('path', {
-        d: 'M -1,2 l 6,0',
+        d: path,
         stroke: color,
-        'stroke-width': thickness,
+        'stroke-width': 1,
     },'');
 }
 
 // Create an SVG pattern tag for colorblind-friendliness.
-function makePattern(id, color, angle, spacing, thickness) {
+function makePattern(id, color, path) {
     return elem('pattern', {
         i: id,
-        width: spacing,
-        height: spacing,
+        width: 3,
+        height: 3,
         patternUnits: 'userSpaceOnUse',
-        patternTransform: 'rotate(' + angle + ') scale(.25)'
-    }, makeHatchingPath(color, thickness));
+        patternTransform: 'scale(.3)',
+    }, makeHatchingPath(color, path));
 }
 
 // Creates a new polygon with the given fill, stroke and clipping path.
@@ -474,14 +474,14 @@ function showMap(container, gameState) {
             makeClipPaths() +
             makeGradient('b', '#88f', '#113') +
             makeGradient('l', '#fa6', '#530') +
-            makePattern('n', 'transparent', 0, 0, 0) +
+            makePattern('n', 'transparent', '') +
             makeGradient('lh', '#fb7', '#741') +
             makeGradient('d', '#210', '#000') +
             makeGradient('w', '#55f', '#003') +
             map(gameState.p, function(player, index) {
                 return makeGradient('p' + index, player.l, player.d) +
                     makeGradient('p' + index + 'h', player.h, player.hd) +
-                    makePattern('p' + index + 'c', player.hd, player.cb, 3, 1);
+                    makePattern('p' + index + 'c', player.cb, player.cbp);
             }).join(''));
 
     // create all the layers (5 per region)
