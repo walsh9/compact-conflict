@@ -428,8 +428,8 @@ function makeGradient(id, light, dark) {
 	}, gradientStop(60, dark) + gradientStop(100, light));
 }
 
-// Draw a line for thehatching function
-function makeHatchingPath(color, path) {
+// Draw a path for the pattern function
+function patternPath(color, path) {
     return elem('path', {
         d: path,
         stroke: color,
@@ -445,7 +445,7 @@ function makePattern(id, color, path) {
         height: 3,
         patternUnits: 'userSpaceOnUse',
         patternTransform: 'scale(.3)',
-    }, makeHatchingPath(color, path));
+    }, patternPath(color, path));
 }
 
 // Creates a new polygon with the given fill, stroke and clipping path.
@@ -800,7 +800,7 @@ function updateMapDisplay(gameState) {
     function updateRegionDisplay(region) {
         var regionOwner = owner(gameState, region);
         var gradientName = (regionOwner ? 'p' + regionOwner.i : 'l');
-        var hatchingName = (gameSetup.cb && regionOwner ? 'p' + regionOwner.i + 'c' : 'n');
+        var patternName = (gameSetup.cb && regionOwner ? 'p' + regionOwner.i + 'c' : 'n');
 
         var highlighted = contains(gameState.d && gameState.d.h || [], region) ||    // a region is highlighted if it has an available move
                           (gameState.e && regionOwner == gameState.e);               // - or belongs to the winner (end game display highlights the winner)
@@ -830,7 +830,7 @@ function updateMapDisplay(gameState) {
 
         // fill
         region.e.style.fill = 'url(#' + gradientName + ')';
-        region.o.style.fill = 'url(#' + hatchingName + ')';
+        region.o.style.fill = 'url(#' + patternName + ')';
     }
 
     function updateTooltips() {
@@ -1634,8 +1634,7 @@ function copyState(state, simulatingPlayer) {
 }
 
 function playOneMove(state) {
-    // we're playing the game now
-    appState = APP_INGAME;
+    if (appState == APP_SETUP_SCREEN) return;
 
     // oneAtATime is used to ensure that all animations from previous moves complete before a new one is played
     oneAtATime(150, function() {
@@ -2196,6 +2195,7 @@ function runSetupScreen() {
         } else {
             prepareIngameUI(game);
             updateDisplay(game);
+            appState = APP_INGAME;
             playOneMove(game);
         }
     };
@@ -2285,6 +2285,7 @@ function setupTitleScreen() {
     onClickOrTap($('und'), invokeUICallback.bind(0, 0, 'un'));
     onClickOrTap($('end'), function() {
         uiCallbacks = {};
+        oaatQueue = [];
         updateDisplay(displayedState);
         runSetupScreen();
     });
