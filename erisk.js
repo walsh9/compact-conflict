@@ -428,8 +428,8 @@ function makeGradient(id, light, dark) {
 	}, gradientStop(60, dark) + gradientStop(100, light));
 }
 
-// Draw a line for thehatching function
-function makeHatchingPath(color, path) {
+// Draw a path for the pattern function
+function patternPath(color, path) {
     return elem('path', {
         d: path,
         stroke: color,
@@ -445,7 +445,7 @@ function makePattern(id, color, path) {
         height: 3,
         patternUnits: 'userSpaceOnUse',
         patternTransform: 'scale(.3)',
-    }, makeHatchingPath(color, path));
+    }, patternPath(color, path));
 }
 
 // Creates a new polygon with the given fill, stroke and clipping path.
@@ -800,7 +800,7 @@ function updateMapDisplay(gameState) {
     function updateRegionDisplay(region) {
         var regionOwner = owner(gameState, region);
         var gradientName = (regionOwner ? 'p' + regionOwner.i : 'l');
-        var hatchingName = (gameSetup.cb && regionOwner ? 'p' + regionOwner.i + 'c' : 'n');
+        var patternName = (gameSetup.cb && regionOwner ? 'p' + regionOwner.i + 'c' : 'n');
 
         var highlighted = contains(gameState.d && gameState.d.h || [], region) ||    // a region is highlighted if it has an available move
                           (gameState.e && regionOwner == gameState.e);               // - or belongs to the winner (end game display highlights the winner)
@@ -830,7 +830,7 @@ function updateMapDisplay(gameState) {
 
         // fill
         region.e.style.fill = 'url(#' + gradientName + ')';
-        region.o.style.fill = 'url(#' + hatchingName + ')';
+        region.o.style.fill = 'url(#' + patternName + ')';
     }
 
     function updateTooltips() {
